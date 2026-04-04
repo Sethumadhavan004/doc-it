@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "doc-it"
+version = "0.1.0"
+description = "Auto-generate human-readable developer session logs from git history"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Sethumadhavan N" },
+]
+keywords = ["git", "devlog", "documentation", "langchain", "langgraph", "ai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Documentation",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "langchain>=0.3.0",
+    "langchain-google-genai>=2.0.0",
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    "click>=8.0.0",
+    "python-dotenv",
+]
+
+[project.urls]
+Homepage = "https://github.com/Sethumadhavan004/doc-it"
+Issues = "https://github.com/Sethumadhavan004/doc-it/issues"
+
+[project.scripts]
+doc-it = "doc_it.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["doc_it*"]

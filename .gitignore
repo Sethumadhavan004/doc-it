@@ -1,0 +1,26 @@
+# doc-it runtime files (local only — not part of project source)
+.doc-it-state.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Test artifacts
+README_test.md
+
+# Environment
+.env
+
+# Testing
+.pytest_cache/
+.coverage
+
+# Editors
+.vscode/
+.idea/
