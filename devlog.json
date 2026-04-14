@@ -1,12 +1,12 @@
 {
   "version": "1.0",
-  "generated_at": "2026-04-14T19:55:54",
+  "generated_at": "2026-04-14T20:13:40",
   "repo": "doc-it",
   "project_summary": "",
   "sessions": [
     {
-      "session_id": "2026-04-14",
-      "date": "2026-04-14",
+      "session_id": "2026-04-05",
+      "date": "2026-04-05",
       "commit_count": 1,
       "commits": [
         {
@@ -58,7 +58,7 @@
     {
       "session_id": "2026-04-14",
       "date": "2026-04-14",
-      "commit_count": 1,
+      "commit_count": 3,
       "commits": [
         {
           "sha": "9936eeb22738909d309809511a89fa0983ed02a1",
@@ -91,14 +91,7 @@
               "anchor": "873f0d6-fix-made-devlogmd-userllm-friendly-by-organising-its-structure"
             }
           ]
-        }
-      ]
-    },
-    {
-      "session_id": "2026-04-14",
-      "date": "2026-04-14",
-      "commit_count": 1,
-      "commits": [
+        },
         {
           "sha": "cf30a1f1118daff83163f50923f2859816c1efee",
           "short_sha": "cf30a1f",
@@ -142,6 +135,22 @@
               "anchor": "9936eeb-feat-add-devlogjson-manifest-and-fix-env-dependency-issues-body-introduce-devlogjson-as-the-machine-readable-graph-data-manifest-generated-alongside-devlogmd-on-every-run-add-get_files_changed-to-git_reader-for-per-commit-file-lists-add-write_devlog_json-to-renderer-with-locked-v10-schema-sessions-commits-tags-files_changed-pointers-wire-json-output-into-both-init-mode-clipy-and-update-mode-graphpy-move-env-from-phase-2-into-doc-it-correct-project-boundary-fix-load_env-path-reference-accordingly-upgrade-langchain-google-genai-2112-421-to-resolve-max_retries-conflict-with-google-genai-1x-sdk-remove-conflicting-google-generativeai-084"
             }
           ]
+        },
+        {
+          "sha": "24ef252ff8c7034264bde6b987eda197eb5c5216",
+          "short_sha": "24ef252",
+          "message": "docs: Updated devlog.md and devlog.json with new feature(graph visualization) implementation",
+          "author": "Sethumadhavan004",
+          "date": "2026-04-14T20:02:37+05:30",
+          "summary": "",
+          "tags": [
+            "docs"
+          ],
+          "files_changed": [
+            "DEVLOG.md",
+            "devlog.json"
+          ],
+          "pointers": []
         }
       ]
     }
