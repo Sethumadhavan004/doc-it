@@ -17,6 +17,9 @@ README_test.md
 # Environment
 .env
 
+# doc-it generated graph output
+graph.html
+
 # Testing
 .pytest_cache/
 .coverage

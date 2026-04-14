@@ -10,6 +10,11 @@ Two modes detected automatically from .doc-it-state.json presence:
 """
 
 import time
+import threading
+import webbrowser
+import http.server
+import socketserver
+import os
 from pathlib import Path
 
 import click
@@ -25,6 +30,7 @@ from doc_it.renderer import (
     write_devlog_json,
 )
 from doc_it.graph import run_update_graph
+from doc_it.graph_renderer import render_graph
 
 # Gemma free tier: 15K tokens per minute.
 # Pause between LLM calls in init mode to avoid RESOURCE_EXHAUSTED.
@@ -151,6 +157,90 @@ def run(repo: Path | None):
         click.echo(f"\n+ Processed {len(commits_processed)} commit(s)")
         click.echo(f"+ DEVLOG written: {get_devlog_path(repo_root)}")
         click.echo(f"+ State updated. Last commit: {commits_processed[0]['short_sha']}")
+
+
+@cli.command()
+@click.option(
+    "--repo",
+    default=None,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Path to the target git repo. Defaults to the current directory.",
+)
+@click.option("--port", default=4242, show_default=True, help="Port to serve on.")
+def serve(repo: Path | None, port: int):
+    """
+    Serve graph.html over http://localhost so Chrome renders it correctly.
+
+    Regenerates graph.html first, then opens the browser automatically.
+    Press Ctrl+C to stop.
+    """
+    try:
+        repo_root = get_repo_root(path=repo)
+    except RuntimeError as e:
+        raise click.ClickException(str(e))
+
+    # Regenerate graph.html before serving
+    try:
+        out_path = render_graph(repo_root)
+    except (FileNotFoundError, RuntimeError) as e:
+        raise click.ClickException(str(e))
+
+    click.echo(f"+ Graph written: {out_path}")
+
+    # Serve from the repo root directory
+    os.chdir(repo_root)
+
+    class QuietHandler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, format, *args):
+            pass  # suppress per-request log noise
+
+    url = f"http://localhost:{port}/graph.html"
+
+    # Open browser after a short delay so the server is ready
+    threading.Timer(0.5, lambda: webbrowser.open(url)).start()
+
+    click.echo(f"+ Serving at {url}")
+    click.echo("  Press Ctrl+C to stop.\n")
+
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.TCPServer(("", port), QuietHandler) as httpd:
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            httpd.shutdown()
+            click.echo("\nStopped.")
+
+
+@cli.command()
+@click.option(
+    "--repo",
+    default=None,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Path to the target git repo. Defaults to the current directory.",
+)
+def graph(repo: Path | None):
+    """
+    Generate an interactive commit graph from devlog.json.
+
+    Writes graph.html to the repo root — open it in any browser.
+    No server required.
+    """
+    try:
+        repo_root = get_repo_root(path=repo)
+    except RuntimeError as e:
+        raise click.ClickException(str(e))
+
+    click.echo(f"Repo: {repo_root}")
+
+    try:
+        out_path = render_graph(repo_root)
+    except FileNotFoundError as e:
+        raise click.ClickException(str(e))
+    except RuntimeError as e:
+        raise click.ClickException(str(e))
+
+    click.echo(f"+ Graph written: {out_path}")
+    click.echo("  Open graph.html in your browser to explore the commit graph.")
 
 
 def main():
