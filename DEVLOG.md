@@ -88,3 +88,27 @@ Each section is one development session.
 **Related:** [e2bf85c — feat: M1 — git data layer and CLI skeleton](#e2bf85c-feat-m1-git-data-layer-and-cli-skeleton), [fe1f9ec — test: add readme test file to verify update mode](#fe1f9ec-test-add-readme-test-file-to-verify-update-mode), [9e8a1ba — feat: M2 — add LangChain diff summarizer chain](#9e8a1ba-feat-m2-add-langchain-diff-summarizer-chain), [ee95756 — feat: M3 — add renderer and wire DEVLOG.md writing](#ee95756-feat-m3-add-renderer-and-wire-devlogmd-writing), [e0be39f — feat: M4 — add pointer detection with structured output and anchor links](#e0be39f-feat-m4-add-pointer-detection-with-structured-output-and-anchor-links), [806c312 — feat: M5 — replace update pipeline with LangGraph StateGraph](#806c312-feat-m5-replace-update-pipeline-with-langgraph-stategraph)
 
 ---
+## Session — 2026-04-14
+
+**Commits in this session:** 1
+
+### [9936eeb] feat: add devlog.json manifest and fix env + dependency issues                                                                                                Body:  Introduce devlog.json as the machine-readable graph data manifest,  generated alongside DEVLOG.md on every run.  - Add get_files_changed() to git_reader for per-commit file lists  - Add write_devlog_json() to renderer with locked v1.0 schema    (sessions, commits, tags, files_changed, pointers)  - Wire JSON output into both init mode (cli.py) and update mode (graph.py)  - Move .env from phase-2/ into doc-it/ — correct project boundary  - Fix load_env() path reference accordingly  - Upgrade langchain-google-genai 2.1.12 → 4.2.1 to resolve    max_retries conflict with google-genai 1.x SDK  - Remove conflicting google-generativeai 0.8.4
+*Sethumadhavan004 — 2026-04-14*
+
+> This commit introduces significant changes to the `devlog.json` manifest generation and integration into both init and update modes. The code now generates a `devlog.json` file alongside `DEVLOG.md`, detailing sessions, commits, tags, and files changed.  The `write_devlog_json` function is added to the renderer, and the JSON output is wired into `cli.py` and `graph.py`. Additionally, the project boundary was corrected by moving the `.env` file, and the langchain-google-genai dependency was upgraded to 4.2.1 to resolve a max_retries conflict.
+
+**Related:** [ee95756 — feat: M3 — add renderer and wire DEVLOG.md writing](#ee95756-feat-m3-add-renderer-and-wire-devlogmd-writing), [873f0d6 — fix: made devlog.md user/llm friendly by organising its structure.](#873f0d6-fix-made-devlogmd-userllm-friendly-by-organising-its-structure)
+
+---
+## Session — 2026-04-14
+
+**Commits in this session:** 1
+
+### [cf30a1f] feat: add interactive commit graph with doc-it graph and serve commands
+*Sethumadhavan004 — 2026-04-14*
+
+> This commit introduces an interactive commit graph visualization tool (`doc-it graph`) that generates a `graph.html` file containing a D3 force-directed graph of the project's commit history. The tool reads `devlog.json`, backfills missing commit history if necessary, and serves the generated graph via a local HTTP server, allowing users to explore the commit graph in their browser.  The code includes commands to regenerate the graph and serve it, along with a `.gitignore` entry to exclude the generated `graph.html` file.
+
+**Related:** [406b9d4 — feat: initial release of doc-it v0.1.0](#406b9d4-feat-initial-release-of-doc-it-v010), [873f0d6 — fix: made devlog.md user/llm friendly by organising its structure.](#873f0d6-fix-made-devlogmd-userllm-friendly-by-organising-its-structure), [88bcaf3 — bugfix: Gemma model not able to process high amount of token, so stalling time between api calls to avoid rate limit.](#88bcaf3-bugfix-gemma-model-not-able-to-process-high-amount-of-token-so-stalling-time-between-api-calls-to-avoid-rate-limit), [89677ea — bugfix:anchor commits not able to be identified because of unreliable json formatting by Gemma](#89677ea-bugfixanchor-commits-not-able-to-be-identified-because-of-unreliable-json-formatting-by-gemma), [9936eeb — feat: add devlog.json manifest and fix env + dependency issues                                                                                                Body:  Introduce devlog.json as the machine-readable graph data manifest,  generated alongside DEVLOG.md on every run.  - Add get_files_changed() to git_reader for per-commit file lists  - Add write_devlog_json() to renderer with locked v1.0 schema    (sessions, commits, tags, files_changed, pointers)  - Wire JSON output into both init mode (cli.py) and update mode (graph.py)  - Move .env from phase-2/ into doc-it/ — correct project boundary  - Fix load_env() path reference accordingly  - Upgrade langchain-google-genai 2.1.12 → 4.2.1 to resolve    max_retries conflict with google-genai 1.x SDK  - Remove conflicting google-generativeai 0.8.4](#9936eeb-feat-add-devlogjson-manifest-and-fix-env-dependency-issues-body-introduce-devlogjson-as-the-machine-readable-graph-data-manifest-generated-alongside-devlogmd-on-every-run-add-get_files_changed-to-git_reader-for-per-commit-file-lists-add-write_devlog_json-to-renderer-with-locked-v10-schema-sessions-commits-tags-files_changed-pointers-wire-json-output-into-both-init-mode-clipy-and-update-mode-graphpy-move-env-from-phase-2-into-doc-it-correct-project-boundary-fix-load_env-path-reference-accordingly-upgrade-langchain-google-genai-2112-421-to-resolve-max_retries-conflict-with-google-genai-1x-sdk-remove-conflicting-google-generativeai-084)
+
+---
