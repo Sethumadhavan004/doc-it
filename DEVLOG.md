@@ -76,3 +76,15 @@ Each section is one development session.
 > This commit refactors the `devlog.md` generation process to be user/LLM-friendly. It introduces a new `summarize_project` function that uses an LLM to create a concise, chronological overview of the project from all commit summaries, which is then added as a header to the DEVLOG.md file. The code also now renders the commit history in date-grouped sections, providing a more organized and narrative view of the project's development.
 
 ---
+## Session — 2026-04-14
+
+**Commits in this session:** 1
+
+### [406b9d4] feat: initial release of doc-it v0.1.0
+*Sethumadhavan004 — 2026-04-05*
+
+> This commit introduces the initial release (v0.1.0) of the `doc-it` tool, which automatically generates developer session logs from git history. The core functionality involves reading git commits, summarizing changes using an LLM, detecting related past commits, and writing a structured `DEVLOG.md` file. Key files modified include `.gitignore`, `README.md`, and several `doc_it` modules like `cli.py`, `git_reader.py`, `chains.py`, `graph.py`, and `renderer.py`, alongside the `pyproject.toml` file, reflecting the foundational structure of the tool.
+
+**Related:** [e2bf85c — feat: M1 — git data layer and CLI skeleton](#e2bf85c-feat-m1-git-data-layer-and-cli-skeleton), [fe1f9ec — test: add readme test file to verify update mode](#fe1f9ec-test-add-readme-test-file-to-verify-update-mode), [9e8a1ba — feat: M2 — add LangChain diff summarizer chain](#9e8a1ba-feat-m2-add-langchain-diff-summarizer-chain), [ee95756 — feat: M3 — add renderer and wire DEVLOG.md writing](#ee95756-feat-m3-add-renderer-and-wire-devlogmd-writing), [e0be39f — feat: M4 — add pointer detection with structured output and anchor links](#e0be39f-feat-m4-add-pointer-detection-with-structured-output-and-anchor-links), [806c312 — feat: M5 — replace update pipeline with LangGraph StateGraph](#806c312-feat-m5-replace-update-pipeline-with-langgraph-stategraph)
+
+---

@@ -30,12 +30,12 @@ def load_env():
     Removes GEMINI_API_KEY after aliasing to suppress LangChain's duplicate-key warning.
     Raises EnvironmentError if neither key is found.
     """
-    env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+    env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
     load_dotenv(dotenv_path=env_path)
 
     if not os.getenv("GOOGLE_API_KEY") and not os.getenv("GEMINI_API_KEY"):
         raise EnvironmentError(
-            "No API key found. Set GOOGLE_API_KEY in your environment or phase-2/.env"
+            "No API key found. Set GOOGLE_API_KEY in your environment or doc-it/.env"
         )
     if not os.getenv("GOOGLE_API_KEY") and os.getenv("GEMINI_API_KEY"):
         os.environ["GOOGLE_API_KEY"] = os.getenv("GEMINI_API_KEY")

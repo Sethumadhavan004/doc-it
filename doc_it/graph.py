@@ -19,9 +19,9 @@ from typing import TypedDict
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 
-from doc_it.git_reader import get_commits_since, get_diff_for_commit
+from doc_it.git_reader import get_commits_since, get_diff_for_commit, get_files_changed
 from doc_it.chains import summarize_commit, detect_pointers
-from doc_it.renderer import render_session_entry, append_to_devlog, read_previous_entries
+from doc_it.renderer import render_session_entry, append_to_devlog, read_previous_entries, write_devlog_json
 from doc_it.state import write_state
 
 
@@ -85,11 +85,46 @@ def render_node(state: UpdateState) -> dict:
 
 def write_node(state: UpdateState) -> dict:
     """
-    Writes DEVLOG.md and saves state last — if any earlier node fails,
-    state is not updated and the next run retries from the same point.
+    Writes DEVLOG.md, devlog.json, and saves state last — if any earlier node
+    fails, state is not updated and the next run retries from the same point.
     """
     print("  [node] write — appending to DEVLOG.md")
     append_to_devlog(state["repo_root"], state["entry"])
+
+    # Assemble session for JSON manifest (update mode: single session, today's date)
+    from datetime import datetime
+    session_date = datetime.now().strftime("%Y-%m-%d")
+    session_commits = []
+    for c, summary, pointers in zip(state["commits"], state["summaries"], state["pointers"]):
+        session_commits.append({
+            **c,
+            "summary":       summary,
+            "files_changed": get_files_changed(state["repo_root"], c["sha"]),
+            "pointers":      pointers,
+        })
+
+    # Merge new session into existing JSON if it exists, else create fresh
+    import json
+    from pathlib import Path
+    json_path = Path(state["repo_root"]) / "devlog.json"
+    existing_sessions = []
+    project_summary = ""
+    if json_path.exists():
+        try:
+            existing = json.loads(json_path.read_text(encoding="utf-8"))
+            existing_sessions = existing.get("sessions", [])
+            project_summary = existing.get("project_summary", "")
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    new_session = {"date": session_date, "commits": session_commits}
+    write_devlog_json(
+        state["repo_root"],
+        existing_sessions + [new_session],
+        project_summary,
+    )
+    print("  [node] write — devlog.json updated")
+
     latest_sha = state["commits"][0]["sha"]
     write_state(state["repo_root"], latest_sha)
     print(f"  [node] write — state saved. Last commit: {latest_sha[:7]}")

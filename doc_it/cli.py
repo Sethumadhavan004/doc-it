@@ -14,7 +14,7 @@ from pathlib import Path
 
 import click
 
-from doc_it.git_reader import get_repo_root, get_commits_since, get_diff_for_commit
+from doc_it.git_reader import get_repo_root, get_commits_since, get_diff_for_commit, get_files_changed
 from doc_it.state import read_state, write_state, ensure_gitignore
 from doc_it.chains import load_env, make_llm, summarize_commit, summarize_project, detect_pointers
 from doc_it.renderer import (
@@ -22,6 +22,7 @@ from doc_it.renderer import (
     render_init_entries,
     create_devlog,
     read_previous_entries,
+    write_devlog_json,
 )
 from doc_it.graph import run_update_graph
 
@@ -101,6 +102,23 @@ def run(repo: Path | None):
             create_devlog(repo_root, init_entries, project_summary)
         except Exception as e:
             raise click.ClickException(f"Failed to write DEVLOG.md: {e}")
+
+        # Build session structure for JSON manifest (init mode: group by date)
+        from collections import defaultdict
+        date_map: dict = defaultdict(list)
+        for c, summary in zip(reversed(commits), reversed(summaries)):
+            commit_date = c["date"][:10]
+            date_map[commit_date].append({
+                **c,
+                "summary":       summary,
+                "files_changed": get_files_changed(repo_root, c["sha"]),
+                "pointers":      [],
+            })
+        sessions = [
+            {"date": date, "commits": date_map[date]}
+            for date in sorted(date_map.keys())
+        ]
+        write_devlog_json(repo_root, sessions, project_summary)
 
         write_state(repo_root, commits[0]["sha"])
 

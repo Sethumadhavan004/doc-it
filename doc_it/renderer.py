@@ -13,6 +13,7 @@ Responsibilities:
 """
 
 import re
+import json
 from pathlib import Path
 from datetime import datetime
 
@@ -189,3 +190,86 @@ def append_to_devlog(repo_root: Path, entry: str) -> None:
         return
     with devlog_path.open("a", encoding="utf-8") as f:
         f.write(entry)
+
+
+# ---------------------------------------------------------------------------
+# JSON manifest — machine-readable source of truth for the graph renderer
+# ---------------------------------------------------------------------------
+
+DEVLOG_JSON_FILENAME = "devlog.json"
+DEVLOG_JSON_VERSION  = "1.0"
+
+# Matches conventional commit prefixes: feat, fix, bugfix, test, chore, docs, refactor, etc.
+_TAG_RE = re.compile(r"^([a-zA-Z]+)[\s:(/]")
+
+
+def _extract_tags(message: str) -> list[str]:
+    """
+    Parses the conventional commit prefix from a commit message.
+    'feat: add thing'  → ['feat']
+    'bugfix:fix thing' → ['bugfix']
+    'random message'   → []
+    """
+    match = _TAG_RE.match(message.strip())
+    if match:
+        return [match.group(1).lower()]
+    return []
+
+
+def write_devlog_json(
+    repo_root: Path,
+    sessions: list[dict],
+    project_summary: str = "",
+) -> None:
+    """
+    Writes devlog.json alongside DEVLOG.md — the machine-readable manifest
+    consumed by the graph renderer and future LLM ingestion layer.
+
+    Args:
+        repo_root:       git repo root
+        sessions:        list of session dicts, each containing:
+                           {date, commits: [{sha, short_sha, message, author,
+                            date, summary, files_changed, pointers}]}
+        project_summary: project overview string (may be empty on update runs)
+
+    Schema version: 1.0
+    """
+    manifest = {
+        "version":         DEVLOG_JSON_VERSION,
+        "generated_at":    datetime.now().isoformat(timespec="seconds"),
+        "repo":            repo_root.name,
+        "project_summary": project_summary,
+        "sessions":        [],
+    }
+
+    for session in sessions:
+        session_commits = []
+        for c in session["commits"]:
+            session_commits.append({
+                "sha":           c["sha"],
+                "short_sha":     c["short_sha"],
+                "message":       c["message"],
+                "author":        c["author"],
+                "date":          c["date"],
+                "summary":       c.get("summary", ""),
+                "tags":          _extract_tags(c["message"]),
+                "files_changed": c.get("files_changed", []),
+                "pointers": [
+                    {
+                        "short_sha": p["short_sha"],
+                        "message":   p["message"],
+                        "anchor":    p["anchor"],
+                    }
+                    for p in c.get("pointers", [])
+                ],
+            })
+
+        manifest["sessions"].append({
+            "session_id":    session["date"],
+            "date":          session["date"],
+            "commit_count":  len(session_commits),
+            "commits":       session_commits,
+        })
+
+    json_path = repo_root / DEVLOG_JSON_FILENAME
+    json_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")

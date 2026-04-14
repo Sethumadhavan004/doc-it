@@ -1,0 +1,59 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-04-14T17:54:29",
+  "repo": "doc-it",
+  "project_summary": "",
+  "sessions": [
+    {
+      "session_id": "2026-04-14",
+      "date": "2026-04-14",
+      "commit_count": 1,
+      "commits": [
+        {
+          "sha": "406b9d494ba09b4de31790669177fc022f069932",
+          "short_sha": "406b9d4",
+          "message": "feat: initial release of doc-it v0.1.0",
+          "author": "Sethumadhavan004",
+          "date": "2026-04-05T00:02:41+05:30",
+          "summary": "This commit introduces the initial release (v0.1.0) of the `doc-it` tool, which automatically generates developer session logs from git history. The core functionality involves reading git commits, summarizing changes using an LLM, detecting related past commits, and writing a structured `DEVLOG.md` file. Key files modified include `.gitignore`, `README.md`, and several `doc_it` modules like `cli.py`, `git_reader.py`, `chains.py`, `graph.py`, and `renderer.py`, alongside the `pyproject.toml` file, reflecting the foundational structure of the tool.",
+          "tags": [
+            "feat"
+          ],
+          "files_changed": [],
+          "pointers": [
+            {
+              "short_sha": "e2bf85c",
+              "message": "feat: M1 \u2014 git data layer and CLI skeleton",
+              "anchor": "e2bf85c-feat-m1-git-data-layer-and-cli-skeleton"
+            },
+            {
+              "short_sha": "fe1f9ec",
+              "message": "test: add readme test file to verify update mode",
+              "anchor": "fe1f9ec-test-add-readme-test-file-to-verify-update-mode"
+            },
+            {
+              "short_sha": "9e8a1ba",
+              "message": "feat: M2 \u2014 add LangChain diff summarizer chain",
+              "anchor": "9e8a1ba-feat-m2-add-langchain-diff-summarizer-chain"
+            },
+            {
+              "short_sha": "ee95756",
+              "message": "feat: M3 \u2014 add renderer and wire DEVLOG.md writing",
+              "anchor": "ee95756-feat-m3-add-renderer-and-wire-devlogmd-writing"
+            },
+            {
+              "short_sha": "e0be39f",
+              "message": "feat: M4 \u2014 add pointer detection with structured output and anchor links",
+              "anchor": "e0be39f-feat-m4-add-pointer-detection-with-structured-output-and-anchor-links"
+            },
+            {
+              "short_sha": "806c312",
+              "message": "feat: M5 \u2014 replace update pipeline with LangGraph StateGraph",
+              "anchor": "806c312-feat-m5-replace-update-pipeline-with-langgraph-stategraph"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

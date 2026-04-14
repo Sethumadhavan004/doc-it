@@ -127,6 +127,23 @@ def get_commits_since(repo_root: Path, sha: str | None) -> list[dict]:
     return commits
 
 
+def get_files_changed(repo_root: Path, sha: str) -> list[str]:
+    """
+    Returns the list of file paths changed in a single commit.
+    Uses --name-only so no diff content is fetched — cheap call.
+    """
+    result = subprocess.run(
+        ["git", "diff-tree", "--no-commit-id", "-r", "--name-only", sha],
+        capture_output=True,
+        encoding="utf-8",
+        errors="ignore",
+        cwd=repo_root,
+    )
+    if result.returncode != 0:
+        return []
+    return [f for f in result.stdout.strip().splitlines() if f]
+
+
 def get_diff_for_commit(repo_root: Path, sha: str) -> str:
     """
     Returns the diff for a single commit as a string.
