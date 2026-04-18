@@ -116,7 +116,7 @@ Project overview:"""),
 def summarize_project(commit_summaries: list[str], llm: ChatGoogleGenerativeAI) -> str:
     """
     Produces a one-paragraph project overview from all commit summaries.
-    Called once during init — written to the top of DEVLOG.md as permanent context.
+    Called on every run — regenerated so it reflects the current project state.
 
     Args:
         commit_summaries: summaries oldest → newest
@@ -127,6 +127,40 @@ def summarize_project(commit_summaries: list[str], llm: ChatGoogleGenerativeAI) 
     combined = "\n\n".join(f"[{i+1}] {s}" for i, s in enumerate(commit_summaries))
     chain = PROJECT_SUMMARY_PROMPT | llm | StrOutputParser()
     return chain.invoke({"commit_summaries": combined})
+
+
+# ---------------------------------------------------------------------------
+# Session summary
+# ---------------------------------------------------------------------------
+
+SESSION_SUMMARY_PROMPT = ChatPromptTemplate.from_messages([
+    ("human", """You are a developer assistant writing a session log.
+Below are plain English summaries of every commit made in a single development session.
+Write a single paragraph (3-5 sentences) describing what was accomplished overall in this session.
+Focus on the big picture: what feature or problem area was worked on, what was completed, and what was left pending.
+Write in past tense. Be specific — mention key files, systems, or patterns touched.
+Do not use bullet points. Do not list individual commits.
+
+Commit summaries for this session:
+{session_summaries}
+
+Session summary:"""),
+])
+
+
+def summarize_session(summaries: list[str], llm: ChatGoogleGenerativeAI) -> str:
+    """
+    Produces a single paragraph summarizing a full development session.
+
+    Args:
+        summaries: plain English commit summaries for the session (chronological)
+        llm:       initialized LLM instance
+
+    Returns: 3-5 sentence session summary string
+    """
+    combined = "\n\n".join(f"[{i+1}] {s}" for i, s in enumerate(summaries))
+    chain = SESSION_SUMMARY_PROMPT | llm | StrOutputParser()
+    return chain.invoke({"session_summaries": combined})
 
 
 # ---------------------------------------------------------------------------

@@ -20,8 +20,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 
 from doc_it.git_reader import get_commits_since, get_diff_for_commit, get_files_changed
-from doc_it.chains import summarize_commit, detect_pointers
-from doc_it.renderer import render_session_entry, append_to_devlog, read_previous_entries, write_devlog_json
+from doc_it.chains import summarize_commit, summarize_session, summarize_project, detect_pointers
+from doc_it.renderer import render_session_entry, append_to_devlog, update_project_overview, read_previous_entries, write_devlog_json
 from doc_it.state import write_state
 
 
@@ -32,6 +32,8 @@ class UpdateState(TypedDict):
     commits:          list
     summaries:        list
     pointers:         list
+    session_summary:  str
+    project_summary:  str
     entry:            str
     previous_entries: list
 
@@ -77,10 +79,53 @@ def detect_pointers_node(state: UpdateState) -> dict:
     return {"pointers": pointers}
 
 
+def session_summary_node(state: UpdateState) -> dict:
+    print("  [node] session_summary — generating session overview paragraph")
+    # Summaries are newest-first from git log; reverse for chronological order
+    ordered = list(reversed(state["summaries"]))
+    summary = summarize_session(ordered, state["llm"])
+    return {"session_summary": summary}
+
+
 def render_node(state: UpdateState) -> dict:
     print("  [node] render — assembling markdown entry")
-    entry = render_session_entry(state["commits"], state["summaries"], state["pointers"])
+    entry = render_session_entry(
+        state["commits"],
+        state["summaries"],
+        state["pointers"],
+        session_summary=state.get("session_summary"),
+    )
     return {"entry": entry}
+
+
+def project_overview_node(state: UpdateState) -> dict:
+    """
+    Regenerates the Project Overview from all commit summaries across history.
+    Reads existing devlog.json for prior summaries, appends current session summaries.
+    Updates DEVLOG.md in-place — this must run after render but before write saves state.
+    """
+    print("  [node] project_overview — regenerating project overview")
+    import json
+    from pathlib import Path
+    json_path = Path(state["repo_root"]) / "devlog.json"
+    all_summaries = []
+    if json_path.exists():
+        try:
+            existing = json.loads(json_path.read_text(encoding="utf-8"))
+            for session in existing.get("sessions", []):
+                for c in session.get("commits", []):
+                    if c.get("summary"):
+                        all_summaries.append(c["summary"])
+        except (json.JSONDecodeError, OSError):
+            pass
+    # Append current session summaries (oldest first)
+    all_summaries += list(reversed(state["summaries"]))
+    new_overview = ""
+    if all_summaries:
+        new_overview = summarize_project(all_summaries, state["llm"])
+        update_project_overview(state["repo_root"], new_overview)
+        print("  [node] project_overview — DEVLOG.md overview updated")
+    return {"project_summary": new_overview}
 
 
 def write_node(state: UpdateState) -> dict:
@@ -108,12 +153,10 @@ def write_node(state: UpdateState) -> dict:
     from pathlib import Path
     json_path = Path(state["repo_root"]) / "devlog.json"
     existing_sessions = []
-    project_summary = ""
     if json_path.exists():
         try:
             existing = json.loads(json_path.read_text(encoding="utf-8"))
             existing_sessions = existing.get("sessions", [])
-            project_summary = existing.get("project_summary", "")
         except (json.JSONDecodeError, OSError):
             pass
 
@@ -121,7 +164,7 @@ def write_node(state: UpdateState) -> dict:
     write_devlog_json(
         state["repo_root"],
         existing_sessions + [new_session],
-        project_summary,
+        state.get("project_summary", ""),
     )
     print("  [node] write — devlog.json updated")
 
@@ -154,15 +197,19 @@ def build_update_graph():
     graph.add_node("load_previous_entries", load_previous_entries_node)
     graph.add_node("summarize",             summarize_node)
     graph.add_node("detect_pointers",       detect_pointers_node)
+    graph.add_node("session_summary",       session_summary_node)
     graph.add_node("render",                render_node)
+    graph.add_node("project_overview",      project_overview_node)
     graph.add_node("write",                 write_node)
 
     graph.add_edge(START, "load_commits")
     graph.add_conditional_edges("load_commits", route_after_load)
     graph.add_edge("load_previous_entries", "summarize")
     graph.add_edge("summarize",             "detect_pointers")
-    graph.add_edge("detect_pointers",       "render")
-    graph.add_edge("render",                "write")
+    graph.add_edge("detect_pointers",       "session_summary")
+    graph.add_edge("session_summary",       "render")
+    graph.add_edge("render",                "project_overview")
+    graph.add_edge("project_overview",      "write")
     graph.add_edge("write",                 END)
 
     return graph.compile()
@@ -181,6 +228,8 @@ def run_update_graph(repo_root, llm, last_commit_sha: str) -> dict:
         "commits":          [],
         "summaries":        [],
         "pointers":         [],
+        "session_summary":  "",
+        "project_summary":  "",
         "entry":            "",
         "previous_entries": [],
     })

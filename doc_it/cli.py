@@ -15,17 +15,19 @@ import webbrowser
 import http.server
 import socketserver
 import os
+from collections import defaultdict
 from pathlib import Path
 
 import click
 
 from doc_it.git_reader import get_repo_root, get_commits_since, get_diff_for_commit, get_files_changed
 from doc_it.state import read_state, write_state, ensure_gitignore
-from doc_it.chains import load_env, make_llm, summarize_commit, summarize_project, detect_pointers
+from doc_it.chains import load_env, make_llm, summarize_commit, summarize_project, summarize_session, detect_pointers
 from doc_it.renderer import (
     get_devlog_path,
     render_init_entries,
     create_devlog,
+    update_project_overview,
     read_previous_entries,
     write_devlog_json,
 )
@@ -102,7 +104,18 @@ def run(repo: Path | None):
         time.sleep(_INTER_CALL_DELAY)
         project_summary = summarize_project(list(reversed(summaries)), llm)
 
-        init_entries = render_init_entries(commits, summaries)
+        # Build per-session summaries grouped by date (oldest first)
+        _date_summaries: dict = defaultdict(list)
+        for c, s in zip(reversed(list(commits)), reversed(list(summaries))):
+            _date_summaries[c["date"][:10]].append(s)
+
+        click.echo("  generating session summaries...")
+        session_summary_map: dict = {}
+        for date, sess_sums in sorted(_date_summaries.items()):
+            time.sleep(_INTER_CALL_DELAY)
+            session_summary_map[date] = summarize_session(sess_sums, llm)
+
+        init_entries = render_init_entries(commits, summaries, session_summary_map)
 
         try:
             create_devlog(repo_root, init_entries, project_summary)
@@ -110,7 +123,6 @@ def run(repo: Path | None):
             raise click.ClickException(f"Failed to write DEVLOG.md: {e}")
 
         # Build session structure for JSON manifest (init mode: group by date)
-        from collections import defaultdict
         date_map: dict = defaultdict(list)
         for c, summary in zip(reversed(commits), reversed(summaries)):
             commit_date = c["date"][:10]

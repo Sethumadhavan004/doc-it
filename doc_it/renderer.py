@@ -43,6 +43,9 @@ def make_anchor(commit: dict) -> str:
     return anchor
 
 
+_MAX_MSG_DISPLAY = 72  # truncate long commit messages in pointer link text
+
+
 def read_previous_entries(repo_root: Path) -> list[dict]:
     """
     Parses DEVLOG.md and returns all documented commits as structured entries.
@@ -59,7 +62,8 @@ def read_previous_entries(repo_root: Path) -> list[dict]:
     entries = []
     for match in COMMIT_HEADING_RE.finditer(content):
         short_sha = match.group(1)
-        message   = match.group(2)
+        # Truncate captured message to guard against body text bleeding into headings
+        message = match.group(2)[:_MAX_MSG_DISPLAY].strip()
         entries.append({
             "short_sha": short_sha,
             "message":   message,
@@ -73,15 +77,17 @@ def render_session_entry(
     summaries: list[str],
     pointers: list | None = None,
     session_date: str | None = None,
+    session_summary: str | None = None,
 ) -> str:
     """
     Assembles a markdown session block for update mode.
 
     Args:
-        commits:      commit dicts (sha, short_sha, message, author, date)
-        summaries:    plain English summaries, parallel to commits
-        pointers:     related-commit lists, parallel to commits (or None)
-        session_date: date override for testing
+        commits:         commit dicts (sha, short_sha, message, author, date)
+        summaries:       plain English summaries, parallel to commits
+        pointers:        related-commit lists, parallel to commits (or None)
+        session_date:    date override for testing
+        session_summary: LLM-generated paragraph for the whole session (optional)
 
     Returns: markdown string, does NOT write to disk.
     """
@@ -92,8 +98,11 @@ def render_session_entry(
 
     lines = [f"## Session — {session_date}", "", f"**Commits in this session:** {len(commits)}", ""]
 
+    if session_summary:
+        lines += [session_summary, ""]
+
     for commit, summary, related in zip(commits, summaries, pointers):
-        lines.append(f"### [{commit['short_sha']}] {commit['message']}")
+        lines.append(f"### [{commit['short_sha']}] {commit['message'][:_MAX_MSG_DISPLAY]}")
         lines.append(f"*{commit['author']} — {commit['date'][:10]}*")
         lines.append("")
         lines.append(f"> {summary}")
@@ -109,7 +118,11 @@ def render_session_entry(
     return "\n".join(lines)
 
 
-def render_init_entries(commits: list[dict], summaries: list[str]) -> str:
+def render_init_entries(
+    commits: list[dict],
+    summaries: list[str],
+    session_summaries: dict[str, str] | None = None,
+) -> str:
     """
     Assembles the full commit history for init mode, grouped by date, chronological order.
 
@@ -118,13 +131,17 @@ def render_init_entries(commits: list[dict], summaries: list[str]) -> str:
     Each unique date gets its own ## Session block with a --- separator.
 
     Args:
-        commits:   commit dicts, newest first
-        summaries: summaries in the same order as commits
+        commits:          commit dicts, newest first
+        summaries:        summaries in the same order as commits
+        session_summaries: {date: paragraph} from summarize_session(), optional
 
     Returns: markdown string covering all sessions, does NOT write to disk.
     """
     paired = list(zip(commits, summaries))
     paired.reverse()  # oldest first
+
+    if session_summaries is None:
+        session_summaries = {}
 
     lines = []
     current_date = None
@@ -137,11 +154,12 @@ def render_init_entries(commits: list[dict], summaries: list[str]) -> str:
                 lines += ["---", ""]
             lines += [f"## Session — {commit_date}", ""]
             current_date = commit_date
-            # Count commits for this date to show the same header as update mode
             date_count = sum(1 for c, _ in paired if c["date"][:10] == commit_date)
             lines += [f"**Commits in this session:** {date_count}", ""]
+            if commit_date in session_summaries:
+                lines += [session_summaries[commit_date], ""]
 
-        lines.append(f"### [{commit['short_sha']}] {commit['message']}")
+        lines.append(f"### [{commit['short_sha']}] {commit['message'][:_MAX_MSG_DISPLAY]}")
         lines.append(f"*{commit['author']} — {commit_date}*")
         lines.append("")
         lines.append(f"> {summary}")
@@ -177,6 +195,41 @@ def create_devlog(repo_root: Path, init_entries: str, project_summary: str = "")
     lines += ["---", ""]
 
     devlog_path.write_text("\n".join(lines) + init_entries, encoding="utf-8")
+
+
+_PROJECT_OVERVIEW_RE = re.compile(
+    r"(## Project Overview\n\n)(.+?)(\n---)",
+    re.DOTALL,
+)
+
+
+def update_project_overview(repo_root: Path, new_summary: str) -> None:
+    """
+    Rewrites the Project Overview paragraph in an existing DEVLOG.md.
+    If no overview section exists yet, prepends one after the header block.
+    Called on every update run so the overview stays current.
+    """
+    devlog_path = get_devlog_path(repo_root)
+    if not devlog_path.exists():
+        return
+
+    content = devlog_path.read_text(encoding="utf-8")
+
+    if _PROJECT_OVERVIEW_RE.search(content):
+        content = _PROJECT_OVERVIEW_RE.sub(
+            rf"\g<1>{new_summary}\g<3>",
+            content,
+            count=1,
+        )
+    else:
+        # No overview section — insert one after the header block
+        header_end = "---\n\n"
+        insert_block = f"## Project Overview\n\n{new_summary}\n\n---\n\n"
+        idx = content.find(header_end)
+        if idx != -1:
+            content = content[:idx + len(header_end)] + insert_block + content[idx + len(header_end):]
+
+    devlog_path.write_text(content, encoding="utf-8")
 
 
 def append_to_devlog(repo_root: Path, entry: str) -> None:
