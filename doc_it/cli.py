@@ -33,10 +33,30 @@ from doc_it.renderer import (
 )
 from doc_it.graph import run_update_graph
 from doc_it.graph_renderer import render_graph
+from doc_it.config import read_noir_config, write_noir_config, get_config_path
+from doc_it.noir import make_noir_llm
 
 # Gemma free tier: 15K tokens per minute.
 # Pause between LLM calls in init mode to avoid RESOURCE_EXHAUSTED.
 _INTER_CALL_DELAY = 15  # seconds
+
+
+def _resolve_llm(mode: str):
+    """
+    Returns the correct LLM instance based on --mode flag.
+    Centralizes the gemini/noir switch so it isn't duplicated across init and update paths.
+    """
+    if mode == "noir":
+        cfg = read_noir_config()
+        if cfg is None:
+            raise click.ClickException(
+                "Noir mode is not configured. Run `doc-it noir setup` first."
+            )
+        try:
+            return make_noir_llm(cfg)
+        except ValueError as e:
+            raise click.ClickException(str(e))
+    return make_llm()
 
 
 @click.group()
@@ -47,12 +67,19 @@ def cli():
 
 @cli.command()
 @click.option(
+    "--mode",
+    default="gemini",
+    type=click.Choice(["gemini", "noir"]),
+    show_default=True,
+    help="LLM backend. 'gemini' uses Google Gemini API; 'noir' uses a local OpenAI-compatible server.",
+)
+@click.option(
     "--repo",
     default=None,
     type=click.Path(exists=True, file_okay=False, path_type=Path),
     help="Path to the target git repo. Defaults to the current directory.",
 )
-def run(repo: Path | None):
+def run(repo: Path | None, mode: str):
     """
     Generate a DEVLOG entry for the current session.
 
@@ -67,10 +94,14 @@ def run(repo: Path | None):
 
     click.echo(f"Repo: {repo_root}")
 
-    try:
-        load_env()
-    except EnvironmentError as e:
-        raise click.ClickException(str(e))
+    # Gemma rate-limit delay only applies to gemini mode; local servers have no limits.
+    inter_call_delay = 0 if mode == "noir" else _INTER_CALL_DELAY
+
+    if mode == "gemini":
+        try:
+            load_env()
+        except EnvironmentError as e:
+            raise click.ClickException(str(e))
 
     state = read_state(repo_root)
 
@@ -90,7 +121,7 @@ def run(repo: Path | None):
             )
 
         click.echo(f"+ Found {len(commits)} commit(s) — summarizing...")
-        llm = make_llm()
+        llm = _resolve_llm(mode)
 
         summaries = []
         for i, c in enumerate(commits):
@@ -98,10 +129,10 @@ def run(repo: Path | None):
             diff = get_diff_for_commit(repo_root, c["sha"])
             summaries.append(summarize_commit(c, diff, llm))
             if i < len(commits) - 1:
-                time.sleep(_INTER_CALL_DELAY)
+                time.sleep(inter_call_delay)
 
         click.echo("  generating project overview...")
-        time.sleep(_INTER_CALL_DELAY)
+        time.sleep(inter_call_delay)
         project_summary = summarize_project(list(reversed(summaries)), llm)
 
         # Build per-session summaries grouped by date (oldest first)
@@ -112,7 +143,7 @@ def run(repo: Path | None):
         click.echo("  generating session summaries...")
         session_summary_map: dict = {}
         for date, sess_sums in sorted(_date_summaries.items()):
-            time.sleep(_INTER_CALL_DELAY)
+            time.sleep(inter_call_delay)
             session_summary_map[date] = summarize_session(sess_sums, llm)
 
         init_entries = render_init_entries(commits, summaries, session_summary_map)
@@ -152,7 +183,7 @@ def run(repo: Path | None):
         last_run    = state["last_run"]
         click.echo(f"Mode: UPDATE (last run: {last_run}, since: {last_commit[:7]})")
 
-        llm = make_llm()
+        llm = _resolve_llm(mode)
 
         click.echo("Running update graph...")
         try:
@@ -253,6 +284,70 @@ def graph(repo: Path | None):
 
     click.echo(f"+ Graph written: {out_path}")
     click.echo("  Open graph.html in your browser to explore the commit graph.")
+
+
+@cli.group()
+def noir():
+    """Noir mode: use a local LLM server instead of Google Gemini."""
+    pass
+
+
+@noir.command()
+def setup():
+    """
+    Interactive wizard to configure noir mode.
+    Saves settings to ~/.doc-it/config.json.
+    """
+    import questionary
+
+    click.echo("doc-it noir setup\n")
+
+    backend = questionary.select(
+        "Select backend:",
+        choices=[
+            "Local LLM server (LM Studio, Ollama, etc.)",
+            "Local NLP — coming soon",
+        ],
+    ).ask()
+
+    if backend is None:
+        click.echo("Setup cancelled.")
+        return
+
+    if backend == "Local NLP — coming soon":
+        click.echo(
+            "\nLocal NLP mode is coming in a future release.\n"
+            "It will run inference fully offline using a lightweight NLP model.\n"
+            "Use 'Local LLM server' for now with LM Studio or Ollama."
+        )
+        return
+
+    url = questionary.text(
+        "Local LLM server URL:",
+        default="http://localhost:1234/v1",
+    ).ask()
+    if url is None:
+        click.echo("Setup cancelled.")
+        return
+
+    model = questionary.text(
+        "Model name (must match what your server is running):",
+        default="qwen2.5-7b",
+    ).ask()
+    if model is None:
+        click.echo("Setup cancelled.")
+        return
+
+    click.echo(f"\nConfiguration:\n  URL:   {url}\n  Model: {model}\n  Temp:  0.2\n")
+
+    confirmed = questionary.confirm("Save this configuration?", default=True).ask()
+    if not confirmed:
+        click.echo("Setup cancelled. Nothing was saved.")
+        return
+
+    write_noir_config(url, model, 0.2)
+    click.echo(f"\n+ Config saved: {get_config_path()}")
+    click.echo("  Run `doc-it run --mode noir` to use your local model.")
 
 
 def main():

@@ -27,6 +27,8 @@ dependencies = [
     "langchain-core>=0.3.0",
     "click>=8.0.0",
     "python-dotenv",
+    "langchain-openai>=0.1.0",
+    "questionary>=2.0.0",
 ]
 
 [project.urls]
