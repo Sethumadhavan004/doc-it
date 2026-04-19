@@ -4,6 +4,8 @@ Auto-generate human-readable developer session logs from your git history — wi
 
 Run `doc-it run` inside any git repo. It reads your commits, summarizes what changed and why using an LLM, detects related past commits, and writes a structured `DEVLOG.md` — one section per session, growing vertically over time. Run `doc-it serve` to explore your commit history as an interactive force-directed graph.
 
+Two LLM backends supported: **Gemini** (default, cloud) and **Noir** (local — LM Studio, Ollama, any OpenAI-compatible server).
+
 ---
 
 ## Demo
@@ -61,7 +63,7 @@ Each node is a commit. Solid edges show the chronological timeline. Dashed edges
 
 ## Install
 
-Requires Python 3.11+ and a Google API key (free tier works).
+Requires Python 3.11+.
 
 ```bash
 git clone https://github.com/Sethumadhavan004/doc-it
@@ -69,7 +71,7 @@ cd doc-it
 pip install -e .
 ```
 
-Create a `.env` file inside the `doc-it/` directory:
+**Gemini mode** (default) requires a Google API key. Create a `.env` file inside the `doc-it/` directory:
 
 ```bash
 # doc-it/.env
@@ -78,19 +80,23 @@ GOOGLE_API_KEY=your_key_here
 
 Get a free key at [aistudio.google.com](https://aistudio.google.com).
 
+**Noir mode** requires no API key — just a running local LLM server. See [Noir mode](#noir-mode) below.
+
 ---
 
 ## Usage
 
 ```bash
 # From inside any git repo:
-doc-it run          # generate or update DEVLOG.md
-doc-it serve        # open interactive commit graph in browser
-doc-it graph        # write graph.html without serving
+doc-it run                   # generate or update DEVLOG.md (Gemini)
+doc-it run --mode noir        # same, using your local LLM server
+doc-it serve                  # open interactive commit graph in browser
+doc-it graph                  # write graph.html without serving
+doc-it noir setup             # configure noir mode interactively
 ```
 
 **`doc-it run`**
-- First run: scans full commit history, creates `DEVLOG.md` and `devlog.json`. Pauses 15s between LLM calls to respect Gemma's free tier rate limit (15K TPM) — expect ~15s per commit.
+- First run: scans full commit history, creates `DEVLOG.md` and `devlog.json`. Pauses 15s between LLM calls to respect Gemma's free tier rate limit (15K TPM) — expect ~15s per commit. No delay in noir mode.
 - Subsequent runs: reads new commits since last run, appends a new session entry.
 
 **`doc-it serve`**
@@ -100,6 +106,36 @@ doc-it graph        # write graph.html without serving
 `DEVLOG.md` and `devlog.json` are written to your repo root and should be committed — they are the artifacts doc-it produces for visitors and agents. `graph.html` is generated on demand and is excluded from git. `.doc-it-state.json` is local-only and automatically added to `.gitignore`.
 
 doc-it excludes `DEVLOG.md` from the diffs it feeds to the LLM, so it never summarizes its own previous output.
+
+---
+
+## Noir mode
+
+Noir mode lets you run doc-it against any local OpenAI-compatible LLM server — no API key, no internet, no rate limits.
+
+**Setup (one time):**
+
+```bash
+doc-it noir setup
+```
+
+The wizard asks for your server URL and model name, then saves them to `~/.doc-it/config.json`.
+
+```
+? Select backend: Local LLM server (LM Studio, Ollama, etc.)
+? Local LLM server URL: http://localhost:1234/v1
+? Model name: qwen2.5-7b
+? Save this configuration? Yes
++ Config saved: C:\Users\you\.doc-it\config.json
+```
+
+**Run:**
+
+```bash
+doc-it run --mode noir
+```
+
+Tested with LM Studio and Ollama. Any server that exposes the OpenAI `/v1/chat/completions` endpoint works.
 
 ---
 
@@ -147,7 +183,9 @@ graph.html          — self-contained D3 force-directed graph (D3 inlined, no C
 | CLI | [Click](https://click.palletsprojects.com/) |
 | LLM pipeline | [LangChain](https://python.langchain.com/) |
 | Pipeline orchestration | [LangGraph](https://langchain-ai.github.io/langgraph/) |
-| LLM | Gemma 3 via [Google Generative AI](https://ai.google.dev/) |
+| LLM (Gemini) | Gemma 3 via [Google Generative AI](https://ai.google.dev/) |
+| LLM (Noir) | Any OpenAI-compatible server via [langchain-openai](https://github.com/langchain-ai/langchain) |
+| Noir setup wizard | [questionary](https://github.com/tmbo/questionary) |
 | Commit graph | [D3.js v7](https://d3js.org/) |
 | Config | [python-dotenv](https://github.com/theskumar/python-dotenv) |
 
@@ -156,8 +194,9 @@ graph.html          — self-contained D3 force-directed graph (D3 inlined, no C
 ## Requirements
 
 - Python 3.11+
-- A `GOOGLE_API_KEY` from [Google AI Studio](https://aistudio.google.com) (free tier: 30 RPM)
 - Git installed and available on PATH
+- **Gemini mode:** A `GOOGLE_API_KEY` from [Google AI Studio](https://aistudio.google.com) (free tier: 30 RPM)
+- **Noir mode:** A running local LLM server (LM Studio, Ollama, or any OpenAI-compatible API)
 
 ---
 
@@ -166,13 +205,15 @@ graph.html          — self-contained D3 force-directed graph (D3 inlined, no C
 ```
 doc-it/
   doc_it/
-    cli.py              — Click entrypoint, run / graph / serve commands
+    cli.py              — Click entrypoint, run / serve / graph / noir commands
     git_reader.py       — git log / git show / git diff-tree via subprocess
     chains.py           — LangChain chains: summarizer + pointer detection
     graph.py            — LangGraph StateGraph for the update pipeline
     renderer.py         — Markdown + JSON assembly, DEVLOG writer
     graph_renderer.py   — Reads devlog.json, backfills history, renders graph.html
-    state.py            — .doc-it-state.json read/write
+    state.py            — .doc-it-state.json read/write (per-repo)
+    config.py           — ~/.doc-it/config.json read/write (global, noir settings)
+    noir.py             — ChatOpenAI factory for local LLM servers
     templates/
       graph.html        — D3 force graph template
       d3.min.js         — D3 v7 bundled locally (no CDN dependency)
