@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "generated_at": "2026-04-14T20:13:40",
+  "generated_at": "2026-04-19T23:00:57",
   "repo": "doc-it",
   "project_summary": "",
   "sessions": [
@@ -58,7 +58,7 @@
     {
       "session_id": "2026-04-14",
       "date": "2026-04-14",
-      "commit_count": 3,
+      "commit_count": 5,
       "commits": [
         {
           "sha": "9936eeb22738909d309809511a89fa0983ed02a1",
@@ -149,6 +149,103 @@
           "files_changed": [
             "DEVLOG.md",
             "devlog.json"
+          ],
+          "pointers": []
+        },
+        {
+          "sha": "cafd1e87827624d5d2857cc16d7b416307c26bab",
+          "short_sha": "cafd1e8",
+          "message": "docs: Updated README.md with new feature (graph) information.",
+          "author": "Sethumadhavan004",
+          "date": "2026-04-14T20:45:04+05:30",
+          "summary": "",
+          "tags": [
+            "docs"
+          ],
+          "files_changed": [
+            "README.md",
+            "devlog.json",
+            "docs/graph-preview.png"
+          ],
+          "pointers": []
+        },
+        {
+          "sha": "3f6833fd8f3e430ee07347736d4a116ce449225f",
+          "short_sha": "3f6833f",
+          "message": "docs: Update copyright year and owner in LICENSE file",
+          "author": "Sethumadhavan",
+          "date": "2026-04-14T21:07:22+05:30",
+          "summary": "",
+          "tags": [
+            "docs"
+          ],
+          "files_changed": [
+            "LICENSE"
+          ],
+          "pointers": []
+        }
+      ]
+    },
+    {
+      "session_id": "2026-04-18",
+      "date": "2026-04-18",
+      "commit_count": 1,
+      "commits": [
+        {
+          "sha": "9432b5cc0bc5ba0a755432e9742429ea9b2eb59d",
+          "short_sha": "9432b5c",
+          "message": "feat: session summaries, live project overview, body truncation fix",
+          "author": "Sethumadhavan004",
+          "date": "2026-04-18T23:10:27+05:30",
+          "summary": "",
+          "tags": [
+            "feat"
+          ],
+          "files_changed": [
+            "doc_it/chains.py",
+            "doc_it/cli.py",
+            "doc_it/graph.py",
+            "doc_it/renderer.py"
+          ],
+          "pointers": []
+        }
+      ]
+    },
+    {
+      "session_id": "2026-04-19",
+      "date": "2026-04-19",
+      "commit_count": 2,
+      "commits": [
+        {
+          "sha": "ee0c9ac3503c8fbe38c43783c62503295d18eb8e",
+          "short_sha": "ee0c9ac",
+          "message": "feat: add noir mode \u2014 local LLM backend via --mode noir",
+          "author": "Sethumadhavan004",
+          "date": "2026-04-19T22:56:39+05:30",
+          "summary": "",
+          "tags": [
+            "feat"
+          ],
+          "files_changed": [
+            "doc_it/cli.py",
+            "doc_it/config.py",
+            "doc_it/noir.py",
+            "pyproject.toml"
+          ],
+          "pointers": []
+        },
+        {
+          "sha": "f72116d72d6746e3f9d7a7b99fb0fd534d1f9ab3",
+          "short_sha": "f72116d",
+          "message": "docs: update README with noir mode setup and usage",
+          "author": "Sethumadhavan004",
+          "date": "2026-04-19T23:00:03+05:30",
+          "summary": "",
+          "tags": [
+            "docs"
+          ],
+          "files_changed": [
+            "README.md"
           ],
           "pointers": []
         }
